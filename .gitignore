@@ -1,27 +1,78 @@
-# macOS
-.DS_Store
+# Coincoin — o que nunca deve ir para o repositório público.
+# Regra geral: código, docs e vetores de teste entram; estado local, builds,
+# credenciais e chaves privadas reais ficam de fora.
 
-# Xcode
+# ── Sistema e editores ──────────────────────────────────────────
+.DS_Store
+._*
+.AppleDouble
+.Spotlight-V100
+.Trashes
+*.swp
+*~
+.idea/
+.vscode/
+*.log
+
+# ── Xcode (app/) ────────────────────────────────────────────────
+# Estado pessoal do Xcode (abas, breakpoints, esquemas pessoais)
 xcuserdata/
 *.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+# Builds, resultados de teste e artefatos de distribuição
 DerivedData/
 build/
+*.xcresult
 *.ipa
+*.dSYM
 *.dSYM.zip
+*.xcarchive
+*.hmap
+*.moved-aside
+timeline.xctimeline
+playground.xcworkspace
 
-# Swift Package Manager
+# ── Assinatura de código da Apple (nunca publicar) ──────────────
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+AuthKey_*.p8
+
+# ── Swift Package Manager ───────────────────────────────────────
 .swiftpm/
 .build/
 
-# Go
+# ── Go (node/) ──────────────────────────────────────────────────
 node/bin/
 *.test
 *.out
+*.prof
 coverage.*
+go.work.sum
 
-# Ambiente
+# ── Estado dos nós em execução ──────────────────────────────────
+# Cadeia, banco local e logs de cada nó são recriáveis a partir do gênese.
+node/data/
+deploy/**/data/
+docker-compose.override.yml
+
+# ── Chaves privadas reais ───────────────────────────────────────
+# Chaves dos validadores e de carteiras ficam fora do repositório.
+# Exceção: testvectors/ guarda chaves de TESTE, públicas de propósito,
+# para app e nó conferirem assinaturas com os mesmos bytes.
+*.pem
+*.key
+keys/
+!testvectors/**
+
+# ── Ambiente e segredos ─────────────────────────────────────────
 .env
+.env.*
+!.env.example
 *.local
 
-# Claude Code: configurações pessoais não versionadas
+# ── Claude Code: configurações pessoais ─────────────────────────
 .claude/settings.local.json
