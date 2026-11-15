@@ -17,6 +17,24 @@ A autora está aprendendo: o objetivo é o aprendizado dos conceitos, não só o
 - **Seja honesto** sobre limitações, alternativas e maturidade das bibliotecas.
 - Responda em português.
 
+## Obrigatório ao final de toda tarefa
+Ao terminar qualquer tarefa que altere arquivos, SEMPRE encerre com um relatório
+**"O que eu fiz"**, em português, contendo:
+
+1. **Arquivos alterados:** cada arquivo criado, modificado ou removido, com uma linha
+   sobre o que mudou nele.
+2. **Como funciona:** explicação do código novo, trecho por trecho quando não for trivial
+   (o que cada parte faz e por que foi escrita assim).
+3. **Conceito de Sistemas Distribuídos:** qual conceito a mudança exercita, ou
+   "nenhum, é infraestrutura" quando for o caso.
+4. **Decisões e alternativas:** o que foi escolhido, o que foi descartado e por quê.
+5. **Comandos executados:** cada comando rodado no terminal e o resultado (testes, build).
+6. **Como verificar:** o que eu devo rodar ou olhar para confirmar que funciona.
+7. **Pendências:** o que ficou incompleto, suposições feitas e riscos.
+
+Nenhuma alteração pode ficar fora do relatório. Se algo foi feito sem ter sido pedido,
+destaque isso explicitamente. Não encerre uma tarefa só com "pronto" ou um resumo genérico.
+
 ## Regras do projeto
 - `api/contrato.md` é a fonte da verdade da comunicação app ↔ nó. Qualquer mudança
   de endpoint ou formato começa por ele, no mesmo commit que altera app e nó.
