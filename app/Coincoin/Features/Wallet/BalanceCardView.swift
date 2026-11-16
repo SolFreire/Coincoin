@@ -27,11 +27,24 @@ final class BalanceCardView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
+        // O mascote espia pelo canto: sai um pouco da borda e o cartão corta o excesso.
+        let mascot = UIImageView(image: UIImage(resource: .mascot))
+        mascot.contentMode = .scaleAspectFit
+        mascot.isAccessibilityElement = false
+        mascot.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(mascot)
+        clipsToBounds = true
+
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 18),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -18),
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: mascot.leadingAnchor, constant: -8),
+
+            mascot.widthAnchor.constraint(equalToConstant: 96),
+            mascot.heightAnchor.constraint(equalTo: mascot.widthAnchor, multiplier: 44.0 / 64.0),
+            mascot.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 8),
+            mascot.bottomAnchor.constraint(equalTo: bottomAnchor, constant: 8),
         ])
 
         isAccessibilityElement = true

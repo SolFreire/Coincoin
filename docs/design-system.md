@@ -61,7 +61,8 @@ de status e valores usam `.label` ou `.secondaryLabel`; o ícone carrega a cor.
 
 ## Mascote (ilustração)
 
-Cores fixas, iguais nos dois temas (a ilustração tem fundo próprio).
+Vetor em `app/Coincoin/Assets.xcassets/Mascot.imageset/mascote.svg` (símbolo `.mascot`),
+desenho provisório. Cores fixas, iguais nos dois temas. É decorativo: o VoiceOver o ignora.
 
 | Parte | Cor |
 |---|---|
