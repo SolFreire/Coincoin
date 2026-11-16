@@ -85,8 +85,14 @@ actor MockNodeClient: NodeClient {
             }
             .sorted { ($0.1, $0.0.sequence) > ($1.1, $1.0.sequence) }  // mais nova primeiro
 
-        let page = confirmed.prefix(pageSize)
-        let hasMore = confirmed.count > pageSize
+        // Completa o último bloco da página: o cursor é a altura, então cortar um bloco
+        // ao meio faria a próxima página pular o resto dele.
+        var end = min(pageSize, confirmed.count)
+        while end < confirmed.count, confirmed[end].1 == confirmed[end - 1].1 {
+            end += 1
+        }
+        let page = confirmed.prefix(end)
+        let hasMore = confirmed.count > end
         let response = TxListResponse(
             items: page.map { tx, _ in record(of: tx) },
             nextBefore: hasMore ? page.last?.1 : nil)

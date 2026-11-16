@@ -83,6 +83,9 @@ conhecida pode estar `confirmed` ou `failed`, não só `pending`.
   quem as enviou, e as acompanha por `GET /tx/{hash}`.
 - `timestamp`: hora do bloco em que a transação foi confirmada.
 - `limit`: padrão 50, máximo 100. `before`: só transações em altura menor que esta.
+- **Uma página nunca corta um bloco ao meio.** Se o limite cair no meio de um bloco, as
+  demais transações desse bloco entram na mesma página (a página pode passar de `limit`).
+  Sem isso, o cursor por altura pularia o resto do bloco na página seguinte.
 - `nextBefore`: valor de `before` para a próxima página; `null` quando acabou.
 
 ### `GET /health`

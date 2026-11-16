@@ -195,3 +195,23 @@ struct MockNodeClientTests {
         #expect(try await node.account(Self.alice).balance == Amount(70))
     }
 }
+
+extension MockNodeClientTests {
+    @Test func paginaNuncaCortaUmBlocoAoMeio() async throws {
+        let node = node(aliceBalance: 100)
+        for nonce in 0..<3 {
+            _ = try await node.submit(transfer(1, nonce: UInt64(nonce)))
+        }
+        await node.mineBlock()  // três transações no mesmo bloco
+
+        var seen: [UInt64] = []
+        var cursor: UInt64? = nil
+        repeat {
+            let page = try await node.transactions(of: Self.alice, before: cursor, limit: 2)
+            seen += page.items.map(\.nonce)
+            cursor = page.nextBefore
+        } while cursor != nil
+
+        #expect(seen.sorted() == [0, 1, 2])
+    }
+}
