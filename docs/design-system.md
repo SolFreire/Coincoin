@@ -1,9 +1,14 @@
 # Design system — Coincoin
 
 Fonte da verdade visual do app iOS. Inspirado na pelagem do Coincoin, o porquinho-da-índia.
-Quando o projeto Xcode existir, cada token de cor vira uma Color Set em `Assets.xcassets`
-com variantes *Any Appearance* (claro) e *Dark*, e é acessado por nome
-(ex.: `UIColor(named: "Accent")`), nunca por hex no código.
+Cada token de cor é uma Color Set em `app/Coincoin/Assets.xcassets`, com variantes
+*Any Appearance* (claro) e *Dark*. No código, use o símbolo gerado pelo Xcode
+(ex.: `UIColor.accentSoft`), verificado na compilação; nunca hex nem `UIColor(named:)`.
+
+Nomes no catálogo que diferem do token:
+- `Accent` → Color Set **`AccentColor`** (tint global do app; símbolo `UIColor.accent`).
+- `Separator` → Color Set **`Divider`** (símbolo `UIColor.divider`), porque `UIColor.separator`
+  já existe no UIKit e o símbolo gerado colidiria com ele.
 
 ## Princípios
 - **Cor da marca só onde há marca ou ação.** Texto, fundos de lista e separadores de sistema
