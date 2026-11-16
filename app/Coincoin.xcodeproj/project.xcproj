@@ -8,7 +8,6 @@
     "development": "pt-BR",
     "supported": [
       "Base",
-      "pt-BR",
     ],
   },
   "files": [
