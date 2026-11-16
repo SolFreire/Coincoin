@@ -78,8 +78,10 @@ conhecida pode estar `confirmed` ou `failed`, não só `pending`.
 }
 ```
 - Enviadas e recebidas pela conta, da mais nova para a mais antiga.
-- `status`, `height` e `failureCode` seguem as regras de `GET /tx/{hash}`.
-- `timestamp`: hora do bloco; `null` se ainda não confirmada.
+- **Só transações confirmadas** (`status` sempre `confirmed`, com `height`): é o histórico
+  da cadeia. Pendentes e falhas das próprias transações o app já conhece, porque foi ele
+  quem as enviou, e as acompanha por `GET /tx/{hash}`.
+- `timestamp`: hora do bloco em que a transação foi confirmada.
 - `limit`: padrão 50, máximo 100. `before`: só transações em altura menor que esta.
 - `nextBefore`: valor de `before` para a próxima página; `null` quando acabou.
 

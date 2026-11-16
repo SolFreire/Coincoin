@@ -91,7 +91,7 @@ nonisolated struct TxRecord: Hashable, Sendable {
     let amount: Amount
     let nonce: UInt64
     let state: TxState
-    let timestamp: Date?
+    let timestamp: Date
 }
 
 extension TxRecord: Decodable {
@@ -107,7 +107,7 @@ extension TxRecord: Decodable {
         amount = try container.decode(Amount.self, forKey: .amount)
         nonce = try container.decode(UInt64.self, forKey: .nonce)
         state = try TxState.decode(from: container, status: .status, height: .height, failureCode: .failureCode)
-        timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
     }
 }
 
@@ -196,5 +196,35 @@ extension TxHash {
     nonisolated init(sha256Of data: Data) {
         let hex = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         self.init(hex: hex)!
+    }
+}
+
+/// Leitura do payload: é o que o nó faz com os bytes recebidos (e o mock, no lugar dele).
+/// `type` precisa ser exatamente "transfer"; qualquer outro valor é rejeitado.
+extension TransferPayload: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case type, to, amount, nonce
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        guard type == "transfer" else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .type, in: container, debugDescription: "Tipo de transação desconhecido: \(type)")
+        }
+        self.init(
+            to: try container.decode(Address.self, forKey: .to),
+            amount: try container.decode(Amount.self, forKey: .amount),
+            nonce: try container.decode(UInt64.self, forKey: .nonce))
+    }
+}
+
+extension Address {
+    /// Endereço de uma chave pública, como define o contrato: primeiros 20 bytes do
+    /// SHA-256 da chave em DER (40 caracteres hex).
+    nonisolated init(publicKeyDER: Data) {
+        let digest = TxHash(sha256Of: publicKeyDER).hex
+        self.init(hex: String(digest.prefix(40)))!
     }
 }
