@@ -1,5 +1,7 @@
-Crie um registro de decisão em `docs/decisoes/` seguindo o formato dos existentes.
-Use o próximo número disponível. Assunto: $ARGUMENTS
+Crie um registro de decisão em `docs/decisoes/` no formato MADR, seguindo os existentes.
+Use o próximo número disponível. Um registro por decisão. Assunto: $ARGUMENTS
 
-Inclua: Contexto, Decisão, Por quê (com o conceito de Sistemas Distribuídos envolvido),
-Alternativas consideradas e Consequências. Seja curto. Mostre o texto antes de salvar.
+Seções: Status e Data; Contexto e problema (terminando numa pergunta); Critérios de
+decisão; Opções consideradas; Decisão (com Consequências positivas e negativas);
+Prós e contras das opções; Conceito de Sistemas Distribuídos (ou "Nenhum, é infraestrutura").
+Seja curto. Mostre o texto antes de salvar.
