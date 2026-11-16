@@ -48,6 +48,10 @@ e foi escurecido para `#9E5420`.
 
 Usam as cores de sistema, que já têm variantes para claro, escuro e alto contraste.
 
+**Cor de status só em ícones e fundos de ícone, nunca em texto.** `.systemGreen` e
+`.systemOrange` sobre o creme ficam em torno de 2:1, abaixo do mínimo de 4,5:1. Textos
+de status e valores usam `.label` ou `.secondaryLabel`; o ícone carrega a cor.
+
 | Status (`api/contrato.md`) | Cor | Fundo do ícone | SF Symbol |
 |---|---|---|---|
 | `pending` | `.systemOrange` | `.systemOrange` a 15% | `clock` |
