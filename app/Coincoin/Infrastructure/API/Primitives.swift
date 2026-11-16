@@ -4,10 +4,7 @@ import Foundation
 // Cada um valida o formato ao ser criado, inclusive quando vem de um JSON do nó:
 // nada que chega da rede é confiável, nem para o app.
 
-/// Valor monetário em Coincoins. Inteiro sem sinal; nunca ponto flutuante.
-///
-/// É um tipo próprio, e não um `UInt64` solto, para o compilador impedir que um valor
-/// seja confundido com um nonce ou uma altura, que também são `UInt64`.
+
 nonisolated struct Amount: Hashable, Comparable, Sendable {
     let units: UInt64
 
@@ -21,7 +18,7 @@ nonisolated struct Amount: Hashable, Comparable, Sendable {
 }
 
 extension Amount: Codable {
-    // No JSON, um Amount é só o número: `"amount": 10`, não `"amount": {"units": 10}`.
+
     init(from decoder: Decoder) throws {
         units = try decoder.singleValueContainer().decode(UInt64.self)
     }
@@ -32,18 +29,17 @@ extension Amount: Codable {
     }
 }
 
-/// Endereço de conta: 40 caracteres hexadecimais minúsculos (20 bytes).
+
 nonisolated struct Address: Hashable, Sendable {
     let hex: String
 
-    /// Falha (`nil`) se o texto não estiver exatamente no formato do contrato.
     init?(hex: String) {
         guard HexFormat.isValid(hex, length: 40) else { return nil }
         self.hex = hex
     }
 }
 
-/// Hash de transação: 64 caracteres hexadecimais minúsculos (SHA-256).
+
 nonisolated struct TxHash: Hashable, Sendable {
     let hex: String
 

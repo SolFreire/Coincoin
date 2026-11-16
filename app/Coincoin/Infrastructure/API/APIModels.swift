@@ -1,10 +1,6 @@
 import CryptoKit
 import Foundation
 
-// Modelos do `api/contrato.md`. Qualquer mudança aqui começa pelo contrato.
-//
-// Todos são `nonisolated`: o projeto isola tudo no MainActor por padrão, mas estes são
-// dados puros e imutáveis, decodificados fora da main thread (NodeClient, actors).
 
 
 nonisolated enum APICoding {
@@ -61,9 +57,7 @@ extension TxState {
     }
 }
 
-// MARK: - Respostas
 
-/// `GET /tx/{hash}` e `POST /tx`.
 nonisolated struct TxStatusResponse: Hashable, Sendable {
     let hash: TxHash
     let state: TxState
@@ -81,10 +75,9 @@ extension TxStatusResponse: Decodable {
     }
 }
 
-/// `GET /accounts/{address}`.
+
 nonisolated struct AccountResponse: Decodable, Hashable, Sendable {
     let address: Address
-    /// Saldo no estado confirmado, na altura `height`.
     let balance: Amount
     let nextNonce: UInt64
     let height: UInt64
@@ -98,7 +91,6 @@ nonisolated struct TxRecord: Hashable, Sendable {
     let amount: Amount
     let nonce: UInt64
     let state: TxState
-    /// Hora do bloco; `nil` enquanto não confirmada.
     let timestamp: Date?
 }
 
@@ -122,7 +114,6 @@ extension TxRecord: Decodable {
 /// `GET /accounts/{address}/txs`.
 nonisolated struct TxListResponse: Decodable, Hashable, Sendable {
     let items: [TxRecord]
-    /// Valor de `before` para a próxima página; `nil` quando acabou.
     let nextBefore: UInt64?
 }
 
@@ -137,10 +128,7 @@ nonisolated struct HealthResponse: Decodable, Hashable, Sendable {
     let height: UInt64
 }
 
-// MARK: - Erros
 
-/// Código de erro do contrato. É uma struct, e não um enum fechado, para que um código
-/// novo vindo do nó seja preservado em vez de quebrar a decodificação.
 nonisolated struct APIErrorCode: RawRepresentable, Codable, Hashable, Sendable {
     let rawValue: String
 
@@ -156,8 +144,7 @@ nonisolated struct APIErrorCode: RawRepresentable, Codable, Hashable, Sendable {
     static let syncing = APIErrorCode(rawValue: "SYNCING")
 }
 
-/// Corpo de erro: `{"error": {"code": "...", "message": "...", "details": {...}}}`.
-/// `details` é ignorado por enquanto; `message` serve só para log, nunca para decidir nada.
+
 nonisolated struct APIError: Error, Decodable, Hashable, Sendable {
     let code: APIErrorCode
     let message: String
@@ -178,7 +165,7 @@ nonisolated struct APIError: Error, Decodable, Hashable, Sendable {
     }
 }
 
-// MARK: - Envio
+
 
 /// Payload de uma transferência, antes de virar bytes.
 nonisolated struct TransferPayload: Encodable, Hashable, Sendable {
@@ -187,28 +174,25 @@ nonisolated struct TransferPayload: Encodable, Hashable, Sendable {
     let amount: Amount
     let nonce: UInt64
 
-    /// Gera os bytes que serão assinados e enviados. Deve ser chamado **uma vez** por
-    /// transação: esses bytes são guardados e reenviados como estão (ver contrato).
     func encodedBytes() throws -> Data {
         try APICoding.makeEncoder().encode(self)
     }
 }
 
-/// Corpo de `POST /tx`. Os três campos são bytes; o JSONEncoder os codifica em base64.
+
 nonisolated struct TransactionEnvelope: Encodable, Hashable, Sendable {
     let payload: Data
     let signature: Data
     let publicKey: Data
 
-    /// Hash da transação, calculado localmente a partir dos bytes do payload.
-    /// Permite acompanhar a transação antes mesmo de o nó responder.
+
     var hash: TxHash {
         TxHash(sha256Of: payload)
     }
 }
 
 extension TxHash {
-    /// SHA-256 dos bytes, em hexadecimal minúsculo. Sempre gera um hash válido.
+
     nonisolated init(sha256Of data: Data) {
         let hex = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         self.init(hex: hex)!
