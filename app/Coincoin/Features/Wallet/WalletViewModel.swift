@@ -1,18 +1,6 @@
 import Combine
 import Foundation
 
-struct RecentTransaction: Equatable, Identifiable {
-    enum Direction: Equatable {
-        case sent, received
-    }
-
-    let id: TxHash
-    let direction: Direction
-    let counterparty: Address
-    let amount: Amount
-    let date: Date
-}
-
 @MainActor
 final class WalletViewModel: ObservableObject {
 
@@ -20,20 +8,13 @@ final class WalletViewModel: ObservableObject {
         let availableBalance: Amount
         let nodeId: String
         let height: UInt64
-        let recent: [RecentTransaction]
+        let recent: [TransactionSummary]
         let fetchedAt: Date
-    }
-
-    enum Problem: Equatable {
-        case unreachable
-        case syncing
-        case rejected(APIErrorCode)
-        case invalidResponse
     }
 
     /// Último estado lido com sucesso. Continua visível quando uma atualização falha.
     @Published private(set) var snapshot: Snapshot?
-    @Published private(set) var problem: Problem?
+    @Published private(set) var problem: NodeProblem?
     @Published private(set) var isLoading = false
 
     let wallet: Address
@@ -64,40 +45,13 @@ final class WalletViewModel: ObservableObject {
                 availableBalance: accountResponse.balance,
                 nodeId: healthResponse.nodeId,
                 height: healthResponse.height,
-                recent: historyResponse.items.map(recentTransaction),
+                recent: historyResponse.items.map { TransactionSummary(record: $0, viewer: wallet) },
                 fetchedAt: now())
             problem = nil
-        } catch let error as NodeClientError {
-            if let problem = Self.problem(for: error) {
+        } catch {
+            if let problem = NodeProblem(error) {
                 self.problem = problem
             }
-        } catch {
-            problem = .invalidResponse
-        }
-    }
-
-    private func recentTransaction(from record: TxRecord) -> RecentTransaction {
-        let sent = record.from == wallet
-        return RecentTransaction(
-            id: record.hash,
-            direction: sent ? .sent : .received,
-            counterparty: sent ? record.to : record.from,
-            amount: record.amount,
-            date: record.timestamp)
-    }
-
-    private static func problem(for error: NodeClientError) -> Problem? {
-        switch error {
-        case .unreachable, .timedOut:
-            return .unreachable
-        case .rejected(let apiError) where apiError.code == .syncing:
-            return .syncing
-        case .rejected(let apiError):
-            return .rejected(apiError.code)
-        case .invalidResponse:
-            return .invalidResponse
-        case .cancelled:
-            return nil
         }
     }
 }

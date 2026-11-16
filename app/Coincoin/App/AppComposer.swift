@@ -16,7 +16,6 @@ struct AppComposer {
         self.wallet = wallet
     }
 
-    // TODO(passo 9/10): carteira vinda do onboarding e HTTPNodeClient no lugar da demonstração.
     init() {
         let demo = DemoEnvironment.make()
         self.init(node: demo.node, wallet: demo.wallet)
@@ -31,13 +30,12 @@ struct AppComposer {
                 WalletViewController(viewModel: WalletViewModel(node: node, wallet: wallet))
             },
             makeTab(id: TabID.activity, title: String(localized: "Histórico"), symbol: "clock.arrow.circlepath") {
-                ActivityViewController()
+                ActivityViewController(viewModel: ActivityViewModel(node: node, wallet: wallet))
             },
         ]
         return tabBarController
     }
 
-    /// `root` só é chamado quando a aba é aberta pela primeira vez.
     private func makeTab(
         id: String,
         title: String,

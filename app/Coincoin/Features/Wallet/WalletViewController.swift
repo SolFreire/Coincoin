@@ -14,6 +14,7 @@ final class WalletViewController: UIViewController {
     private let recentTitle = UILabel()
     private let recentList = UIStackView()
     private let emptyLabel = UILabel()
+    private var rowTransactions: [ObjectIdentifier: TransactionSummary] = [:]
 
     init(viewModel: WalletViewModel) {
         self.viewModel = viewModel
@@ -59,10 +60,21 @@ final class WalletViewController: UIViewController {
         emptyLabel.numberOfLines = 0
         emptyLabel.adjustsFontForContentSizeCategory = true
 
-        let content = UIStackView(arrangedSubviews: [nodeRow, balanceCard, recentTitle, recentList, emptyLabel])
+        let actions = UIStackView(arrangedSubviews: [
+            CircleActionButton(title: String(localized: "Enviar"), symbol: "arrow.up") { [weak self] in
+                self?.showComingSoon(String(localized: "Enviar"))
+            },
+            CircleActionButton(title: String(localized: "Receber"), symbol: "arrow.down") { [weak self] in
+                self?.showComingSoon(String(localized: "Receber"))
+            },
+        ])
+        actions.distribution = .fillEqually
+
+        let content = UIStackView(arrangedSubviews: [nodeRow, balanceCard, actions, recentTitle, recentList, emptyLabel])
         content.axis = .vertical
         content.spacing = 12
-        content.setCustomSpacing(28, after: balanceCard)
+        content.setCustomSpacing(20, after: balanceCard)
+        content.setCustomSpacing(28, after: actions)
         content.setCustomSpacing(4, after: recentTitle)
         content.translatesAutoresizingMaskIntoConstraints = false
 
@@ -91,6 +103,16 @@ final class WalletViewController: UIViewController {
         ])
     }
 
+    // TODO(passos 7 e 8): abrir as sheets Enviar (com leitor de QR no campo de endereço) e Receber.
+    private func showComingSoon(_ feature: String) {
+        let alert = UIAlertController(
+            title: feature,
+            message: String(localized: "Disponível em breve."),
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: String(localized: "OK"), style: .default))
+        present(alert, animated: true)
+    }
+
     // MARK: - Estado
 
     private func bind() {
@@ -102,7 +124,7 @@ final class WalletViewController: UIViewController {
             .store(in: &cancellables)
     }
 
-    private func render(snapshot: WalletViewModel.Snapshot?, problem: WalletViewModel.Problem?, isLoading: Bool) {
+    private func render(snapshot: WalletViewModel.Snapshot?, problem: NodeProblem?, isLoading: Bool) {
         if !isLoading, refreshControl.isRefreshing {
             refreshControl.endRefreshing()
         }
@@ -111,26 +133,32 @@ final class WalletViewController: UIViewController {
         balanceCard.show(amount: snapshot?.availableBalance)
 
         recentList.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        rowTransactions.removeAll()
         let recent = snapshot?.recent ?? []
         for transaction in recent {
-            recentList.addArrangedSubview(TransactionRowView(transaction: transaction))
+            let row = TransactionRowView(transaction: transaction)
+            row.accessibilityTraits = .button
+            row.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(recentRowTapped(_:))))
+            rowTransactions[ObjectIdentifier(row)] = transaction
+            recentList.addArrangedSubview(row)
         }
         recentTitle.isHidden = snapshot == nil
         emptyLabel.isHidden = snapshot == nil || !recent.isEmpty
     }
 
-    private func renderNodeStatus(snapshot: WalletViewModel.Snapshot?, problem: WalletViewModel.Problem?, isLoading: Bool) {
+    @objc private func recentRowTapped(_ gesture: UITapGestureRecognizer) {
+        guard let row = gesture.view, let transaction = rowTransactions[ObjectIdentifier(row)] else { return }
+        present(TransactionDetailViewController.sheet(for: transaction), animated: true)
+    }
+
+    private func renderNodeStatus(snapshot: WalletViewModel.Snapshot?, problem: NodeProblem?, isLoading: Bool) {
         let symbol: String
         let color: UIColor
         var text: String
 
         switch problem {
-        case .unreachable?:
-            (symbol, color, text) = ("wifi.exclamationmark", .systemOrange, String(localized: "Sem conexão com o nó"))
-        case .syncing?:
-            (symbol, color, text) = ("arrow.triangle.2.circlepath", .systemOrange, String(localized: "Nó sincronizando"))
-        case .rejected?, .invalidResponse?:
-            (symbol, color, text) = ("exclamationmark.triangle", .systemOrange, String(localized: "O nó respondeu com erro"))
+        case let problem?:
+            (symbol, color, text) = (problem.symbol, .systemOrange, problem.message)
         case nil:
             if let snapshot {
                 let height = snapshot.height.formatted()

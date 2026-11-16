@@ -32,3 +32,21 @@ extension UIFont {
         return UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont(descriptor: descriptor, size: size))
     }
 }
+
+extension String {
+    /// "a3f901bc…" → "a3f9 01bc …": blocos de 4 facilitam conferir de olho.
+    func groupedInFours() -> String {
+        stride(from: 0, to: count, by: 4).map { offset in
+            let start = index(startIndex, offsetBy: offset)
+            let end = index(start, offsetBy: 4, limitedBy: endIndex) ?? endIndex
+            return String(self[start..<end])
+        }.joined(separator: " ")
+    }
+}
+
+extension UIFont {
+    static func monospaced(_ style: TextStyle) -> UIFont {
+        let size = UIFont.preferredFont(forTextStyle: style).pointSize
+        return UIFontMetrics(forTextStyle: style).scaledFont(for: .monospacedSystemFont(ofSize: size, weight: .regular))
+    }
+}

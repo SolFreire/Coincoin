@@ -2,16 +2,25 @@ import UIKit
 
 final class TransactionRowView: UIView {
 
+    enum Subtitle {
+        case relativeDate
+        case block
+    }
+
     private let iconBackground = UIView()
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
     private let amountLabel = UILabel()
 
-    init(transaction: RecentTransaction) {
+    init() {
         super.init(frame: .zero)
         buildLayout()
-        configure(with: transaction)
+    }
+
+    convenience init(transaction: TransactionSummary, subtitle: Subtitle = .relativeDate) {
+        self.init()
+        configure(with: transaction, subtitle: subtitle)
     }
 
     @available(*, unavailable)
@@ -34,6 +43,7 @@ final class TransactionRowView: UIView {
         subtitleLabel.adjustsFontForContentSizeCategory = true
 
         amountLabel.font = .roundedDigits(size: 17, weight: .medium, relativeTo: .body)
+        amountLabel.textColor = .label
         amountLabel.adjustsFontForContentSizeCategory = true
         amountLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         amountLabel.setContentHuggingPriority(.required, for: .horizontal)
@@ -61,30 +71,74 @@ final class TransactionRowView: UIView {
         ])
     }
 
-    private func configure(with transaction: RecentTransaction) {
-        let amount = transaction.amount.displayText()
-        let date = transaction.date.formatted(.relative(presentation: .named))
-        subtitleLabel.text = date.prefix(1).uppercased() + date.dropFirst()
+    func configure(with transaction: TransactionSummary, subtitle: Subtitle) {
+        let look = transaction.appearance
+        iconView.image = UIImage(systemName: look.symbol)
+        iconView.tintColor = look.tint
+        iconBackground.backgroundColor = look.background
+        titleLabel.text = transaction.counterpartyText
+        amountLabel.text = transaction.signedAmountText
 
-        switch transaction.direction {
-        case .received:
-            iconView.image = UIImage(systemName: "arrow.down.left")
-            iconView.tintColor = .systemGreen
-            iconBackground.backgroundColor = .systemGreen.withAlphaComponent(0.15)
-            titleLabel.text = String(localized: "De \(transaction.counterparty.short)")
-            amountLabel.text = "+\(amount)"
-            amountLabel.textColor = .label
-        case .sent:
-            iconView.image = UIImage(systemName: "arrow.up.right")
-            iconView.tintColor = .secondaryLabel
-            iconBackground.backgroundColor = .tertiarySystemFill
-            titleLabel.text = String(localized: "Para \(transaction.counterparty.short)")
-            amountLabel.text = "−\(amount)"
-            amountLabel.textColor = .label
+        switch subtitle {
+        case .relativeDate:
+            subtitleLabel.text = transaction.relativeDateText
+        case .block:
+            subtitleLabel.text = transaction.height.map { String(localized: "Bloco \($0.formatted())") }
+                ?? transaction.statusText
         }
 
         isAccessibilityElement = true
-        let verb = transaction.direction == .received ? String(localized: "Recebido") : String(localized: "Enviado")
-        accessibilityLabel = "\(verb), \(transaction.amount.accessibilityText()), \(titleLabel.text ?? ""), \(date)"
+        accessibilityLabel = [
+            transaction.direction == .received ? String(localized: "Recebido") : String(localized: "Enviado"),
+            transaction.amount.accessibilityText(),
+            transaction.counterpartyText,
+            subtitleLabel.text ?? "",
+        ].joined(separator: ", ")
+    }
+}
+
+// MARK: - Aparência compartilhada (linha e detalhe)
+
+extension TransactionSummary {
+    struct Appearance {
+        let symbol: String
+        let tint: UIColor
+        let background: UIColor
+    }
+
+    var appearance: Appearance {
+        switch (state, direction) {
+        case (.pending, _):
+            Appearance(symbol: "clock", tint: .systemOrange, background: .systemOrange.withAlphaComponent(0.15))
+        case (.failed, _):
+            Appearance(symbol: "xmark", tint: .systemRed, background: .systemRed.withAlphaComponent(0.15))
+        case (.confirmed, .received):
+            Appearance(symbol: "arrow.down.left", tint: .systemGreen, background: .systemGreen.withAlphaComponent(0.15))
+        case (.confirmed, .sent):
+            Appearance(symbol: "arrow.up.right", tint: .secondaryLabel, background: .tertiarySystemFill)
+        }
+    }
+
+    var counterpartyText: String {
+        direction == .received
+            ? String(localized: "De \(counterparty.short)")
+            : String(localized: "Para \(counterparty.short)")
+    }
+
+    var signedAmountText: String {
+        (direction == .received ? "+" : "−") + amount.displayText()
+    }
+
+    var relativeDateText: String {
+        let text = date.formatted(.relative(presentation: .named))
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+
+    var statusText: String {
+        switch state {
+        case .pending: String(localized: "Pendente")
+        case .confirmed: String(localized: "Confirmada")
+        case .failed: String(localized: "Falhou")
+        }
     }
 }
