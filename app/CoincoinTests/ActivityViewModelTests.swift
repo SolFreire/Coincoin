@@ -5,8 +5,8 @@ import Testing
 @MainActor
 struct ActivityViewModelTests {
 
-    static let aliceKey = Data("chave-publica-alice".utf8)
-    static let alice = Address(publicKeyDER: aliceKey)
+    static let aliceSigner = InMemorySigner()
+    static let alice = aliceSigner.address
     static let bob = Address(hex: String(repeating: "b0", count: 20))!
     static let day: TimeInterval = 86_400
     static let start = Date(timeIntervalSince1970: 1_800_000_000)
@@ -29,8 +29,7 @@ struct ActivityViewModelTests {
 
     func send(on node: MockNodeClient, nonce: UInt64) async throws {
         let payload = TransferPayload(to: Self.bob, amount: Amount(1), nonce: nonce)
-        _ = try await node.submit(TransactionEnvelope(
-            payload: try payload.encodedBytes(), signature: Data(), publicKey: Self.aliceKey))
+        _ = try await node.submit(Self.aliceSigner.envelope(for: payload))
     }
 
     func viewModel(_ node: MockNodeClient, pageSize: Int = 30) -> ActivityViewModel {

@@ -5,8 +5,8 @@ Fonte da verdade da comunicação entre o app e os nós. Rascunho: será refinad
 ## Convenções
 - JSON com campos em `camelCase`.
 - Hash da transação: SHA-256 dos bytes do `payload`, em hexadecimal minúsculo (64 caracteres).
-- Endereço: primeiros 20 bytes do SHA-256 da chave pública (DER), em hexadecimal minúsculo
-  (40 caracteres).
+- Endereço: primeiros 20 bytes do SHA-256 dos bytes de `publicKey` (ver "Chave pública"),
+  em hexadecimal minúsculo (40 caracteres).
 - Altura (`height`): número do bloco; o gênese é 0.
 - Valores (`amount`, `balance`, `nonce`, `height`): número JSON inteiro sem sinal (`uint64`).
   Nunca string, nunca ponto flutuante.
@@ -44,6 +44,33 @@ Payload decodificado:
 - O hash da transação é o SHA-256 desses mesmos bytes. Reenviar os mesmos bytes é seguro:
   o nó reconhece o hash e responde 200 (idempotência).
 - O remetente é derivado de `publicKey`; não vai no payload.
+
+### Assinatura
+- Algoritmo: **ECDSA na curva P-256 (secp256r1) com SHA-256**.
+- A assinatura é calculada **sobre os bytes do payload**. O SHA-256 faz parte do algoritmo:
+  o cliente não aplica hash antes (não assinar o hash da transação).
+- `signature`: estrutura ASN.1 DER `SEQUENCE { r INTEGER, s INTEGER }`, de 70 a 72 bytes
+  em geral, em base64.
+- ECDSA é aleatório: assinar o mesmo payload duas vezes gera assinaturas diferentes, ambas
+  válidas. Como o hash da transação cobre só o payload, as duas são **a mesma transação**
+  (o nó responde 200 na segunda).
+
+### Chave pública
+- `publicKey`: `SubjectPublicKeyInfo` DER (X.509) de uma chave P-256 com ponto **não
+  comprimido**, sempre 91 bytes, em base64.
+- O nó recusa qualquer outra curva ou codificação, inclusive o ponto comprimido da mesma
+  chave: o endereço é derivado desses bytes exatos, então duas codificações da mesma chave
+  seriam duas contas.
+
+### Ordem de validação no nó
+1. Decodificar o base64 dos três campos → senão `MALFORMED`.
+2. Ler `publicKey` como P-256 em 91 bytes → senão `MALFORMED`.
+3. Verificar `signature` sobre os bytes do payload → senão `INVALID_SIGNATURE`.
+4. Só então interpretar o JSON do payload → senão `MALFORMED`.
+5. Regras de estado (nonce, saldo) → `INVALID_NONCE`, `INSUFFICIENT_FUNDS`.
+
+Equivalências: Swift `P256.Signing.PublicKey.derRepresentation` e
+`ECDSASignature.derRepresentation`; Go `x509.ParsePKIXPublicKey` e `ecdsa.VerifyASN1`.
 
 ## Respostas
 
@@ -97,7 +124,7 @@ conhecida pode estar `confirmed` ou `failed`, não só `pending`.
 ## Códigos de erro
 | Código | HTTP | Significado |
 |---|---|---|
-| MALFORMED | 400 | Base64 ou JSON inválido |
+| MALFORMED | 400 | Base64, chave pública ou JSON inválido |
 | INVALID_SIGNATURE | 422 | Assinatura não confere |
 | INSUFFICIENT_FUNDS | 422 | Saldo insuficiente no estado confirmado |
 | INVALID_NONCE | 409 | Nonce já usado ou fora da janela aceita |

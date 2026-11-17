@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Nó Coincoin falso, em memória, com latência e falhas configuráveis.
@@ -109,7 +110,8 @@ actor MockNodeClient: NodeClient {
 
     func submit(_ envelope: TransactionEnvelope) async throws(NodeClientError) -> TxStatusResponse {
         let dropsResponse = try await travel()
-
+        try verifySignature(of: envelope)
+        
         let hash = envelope.hash
         if let known = transactions[hash] {
             return try deliver(TxStatusResponse(hash: hash, state: known.state), dropping: dropsResponse)
@@ -158,7 +160,19 @@ actor MockNodeClient: NodeClient {
             transactions[tx.hash] = tx
         }
     }
-
+    
+    private func verifySignature(of envelope: TransactionEnvelope) throws(NodeClientError) {
+        guard envelope.publicKey.count == 91,
+              let publicKey = try? P256.Signing.PublicKey(derRepresentation: envelope.publicKey)
+        else {
+            throw .rejected(APIError(code: .malformed, message: "Chave pública inválida"))
+        }
+        guard let signature = try? P256.Signing.ECDSASignature(derRepresentation: envelope.signature),
+              publicKey.isValidSignature(signature, for: envelope.payload)
+        else {
+            throw .rejected(APIError(code: .invalidSignature, message: "Assinatura não confere"))
+        }
+    }
 
     private func travel() async throws(NodeClientError) -> Bool {
         let failure = scheduledFailures.isEmpty ? nil : scheduledFailures.removeFirst()

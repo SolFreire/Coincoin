@@ -4,15 +4,15 @@ nonisolated struct DemoEnvironment: Sendable {
     let node: DemoNodeClient
     let wallet: Address
 
-    static let walletKey = Data("carteira-demo".utf8)
-    static let faucetKey = Data("torneira-demo".utf8)
-    static let friendKey = Data("amigo-demo".utf8)
+    static let walletSigner = InMemorySigner()
+    static let faucetSigner = InMemorySigner()
+    static let friendSigner = InMemorySigner()
 
     static func make(now: Date = .now) -> DemoEnvironment {
-        let wallet = Address(publicKeyDER: walletKey)
+        let wallet = walletSigner.address
         let mock = MockNodeClient(
             nodeId: "demo",
-            balances: [Address(publicKeyDER: faucetKey): Amount(1_000_000)])
+            balances: [faucetSigner.address: Amount(1_000_000)])
 
         let ready = Task {
             await seed(mock, wallet: wallet, now: now)
@@ -22,17 +22,17 @@ nonisolated struct DemoEnvironment: Sendable {
     }
 
     private static func seed(_ mock: MockNodeClient, wallet: Address, now: Date) async {
-        let friend = Address(publicKeyDER: friendKey)
-        let history: [(key: Data, to: Address, amount: UInt64, nonce: UInt64, daysAgo: Double)] = [
-            (faucetKey, wallet, 1_120, 0, 5),
-            (walletKey, friend, 120, 0, 3),
-            (faucetKey, wallet, 300, 1, 1),
-            (walletKey, friend, 50, 1, 0.1),
+        let friend = friendSigner.address
+        let history: [(signer: InMemorySigner, to: Address, amount: UInt64, nonce: UInt64, daysAgo: Double)] = [
+            (faucetSigner, wallet, 1_120, 0, 5),
+            (walletSigner, friend, 120, 0, 3),
+            (faucetSigner, wallet, 300, 1, 1),
+            (walletSigner, friend, 50, 1, 0.1),
         ]
         for entry in history {
             let payload = TransferPayload(to: entry.to, amount: Amount(entry.amount), nonce: entry.nonce)
-            guard let bytes = try? payload.encodedBytes() else { continue }
-            _ = try? await mock.submit(TransactionEnvelope(payload: bytes, signature: Data(), publicKey: entry.key))
+            guard let envelope = try? await entry.signer.envelope(for: payload) else { continue }
+            _ = try? await mock.submit(envelope)
             await mock.mineBlock(at: now.addingTimeInterval(-entry.daysAgo * 86_400))
         }
     }

@@ -5,15 +5,12 @@ import Testing
 /// Comportamento do nó simulado: regras do contrato e, principalmente, falhas de rede.
 struct MockNodeClientTests {
 
-    // Chaves "públicas" de mentira: o mock ainda não verifica assinaturas (passo 6),
-    // só deriva o endereço do remetente a partir delas, como manda o contrato.
-    static let aliceKey = Data("chave-publica-alice".utf8)
-    static let alice = Address(publicKeyDER: aliceKey)
+    static let aliceSigner = InMemorySigner()
+    static let alice = aliceSigner.address
     static let bob = Address(hex: String(repeating: "b0", count: 20))!
 
-    func transfer(_ amount: UInt64, nonce: UInt64, to: Address = bob) throws -> TransactionEnvelope {
-        let payload = TransferPayload(to: to, amount: Amount(amount), nonce: nonce)
-        return TransactionEnvelope(payload: try payload.encodedBytes(), signature: Data(), publicKey: Self.aliceKey)
+    func transfer(_ amount: UInt64, nonce: UInt64, to: Address = bob) async throws -> TransactionEnvelope {
+        try await Self.aliceSigner.envelope(for: TransferPayload(to: to, amount: Amount(amount), nonce: nonce))
     }
 
     func node(aliceBalance: UInt64 = 100) -> MockNodeClient {
@@ -39,7 +36,7 @@ struct MockNodeClientTests {
 
     @Test func envioFicaPendenteEConfirmaNoBloco() async throws {
         let node = node()
-        let envelope = try transfer(30, nonce: 0)
+        let envelope = try await transfer(30, nonce: 0)
 
         let sent = try await node.submit(envelope)
         #expect(sent.state == .pending)
@@ -55,7 +52,7 @@ struct MockNodeClientTests {
 
     @Test func reenvioDosMesmosBytesEIdempotente() async throws {
         let node = node()
-        let envelope = try transfer(30, nonce: 0)
+        let envelope = try await transfer(30, nonce: 0)
 
         let first = try await node.submit(envelope)
         let second = try await node.submit(envelope)
@@ -90,8 +87,8 @@ struct MockNodeClientTests {
         // Gasto duplo: as duas passam no envio (o saldo confirmado é 100 nas duas
         // checagens), mas só a primeira cabe no bloco. A ordem resolve o conflito.
         let node = node(aliceBalance: 100)
-        let first = try transfer(80, nonce: 0)
-        let second = try transfer(80, nonce: 1)
+        let first = try await transfer(80, nonce: 0)
+        let second = try await transfer(80, nonce: 1)
 
         _ = try await node.submit(first)
         _ = try await node.submit(second)
@@ -134,7 +131,7 @@ struct MockNodeClientTests {
 
     @Test func semConexaoNadaEExecutado() async throws {
         let node = node()
-        let envelope = try transfer(30, nonce: 0)
+        let envelope = try await  transfer(30, nonce: 0)
         await node.failNextCalls(.unreachable)
 
         await #expect(throws: NodeClientError.unreachable) {
@@ -149,7 +146,7 @@ struct MockNodeClientTests {
     @Test func respostaPerdidaMasATransacaoExisteERecuperavel() async throws {
         // O cenário central da disciplina: o nó executou, a resposta se perdeu.
         let node = node()
-        let envelope = try transfer(30, nonce: 0)
+        let envelope = try await transfer(30, nonce: 0)
         await node.failNextCalls(.dropResponse)
 
         let error = await #expect(throws: NodeClientError.self) {
@@ -181,7 +178,7 @@ struct MockNodeClientTests {
         // estado e a idempotência garante um único débito.
         let node = MockNodeClient(
             balances: [Self.alice: Amount(100)], behavior: .init(latency: .milliseconds(2)))
-        let envelope = try transfer(30, nonce: 0)
+        let envelope = try await transfer(30, nonce: 0)
 
         try await withThrowingTaskGroup(of: TxStatusResponse.self) { group in
             for _ in 0..<10 {
@@ -197,21 +194,84 @@ struct MockNodeClientTests {
 }
 
 extension MockNodeClientTests {
-    @Test func paginaNuncaCortaUmBlocoAoMeio() async throws {
-        let node = node(aliceBalance: 100)
-        for nonce in 0..<3 {
-            _ = try await node.submit(transfer(1, nonce: UInt64(nonce)))
+    static let invalidSignature = NodeClientError.rejected(
+        APIError(code: .invalidSignature, message: "Assinatura não confere"))
+
+    @Test func assinaturaDeOutraChaveERecusada() async throws {
+        let genuine = try await transfer(30, nonce: 0)
+        let forged = TransactionEnvelope(
+            payload: genuine.payload,
+            signature: try await InMemorySigner().sign(genuine.payload),
+            publicKey: genuine.publicKey)
+
+        await #expect(throws: Self.invalidSignature) {
+            try await node().submit(forged)
         }
-        await node.mineBlock()  // três transações no mesmo bloco
-
-        var seen: [UInt64] = []
-        var cursor: UInt64? = nil
-        repeat {
-            let page = try await node.transactions(of: Self.alice, before: cursor, limit: 2)
-            seen += page.items.map(\.nonce)
-            cursor = page.nextBefore
-        } while cursor != nil
-
-        #expect(seen.sorted() == [0, 1, 2])
     }
+
+    @Test func payloadTrocadoNoCaminhoERecusado() async throws {
+        let genuine = try await transfer(30, nonce: 0)
+        let tampered = TransactionEnvelope(
+            payload: try TransferPayload(to: Self.bob, amount: Amount(90), nonce: 0).encodedBytes(),
+            signature: genuine.signature,
+            publicKey: genuine.publicKey)
+
+        await #expect(throws: Self.invalidSignature) {
+            try await node().submit(tampered)
+        }
+    }
+
+    @Test func chavePublicaForaDoFormatoEMalformed() async throws {
+        let genuine = try await transfer(30, nonce: 0)
+        let wrongKey = TransactionEnvelope(
+            payload: genuine.payload, signature: genuine.signature, publicKey: Data("chave".utf8))
+
+        await #expect(throws: NodeClientError.rejected(APIError(code: .malformed, message: "Chave pública inválida"))) {
+            try await node().submit(wrongKey)
+        }
+    }
+
+    @Test func assinaturaEVerificadaAntesDoNonce() async throws {
+        let genuine = try await transfer(30, nonce: 7)
+        let forged = TransactionEnvelope(
+            payload: genuine.payload, signature: Data([0x30, 0x00]), publicKey: genuine.publicKey)
+
+        await #expect(throws: Self.invalidSignature) {
+            try await node().submit(forged)
+        }
+    }
+
+    @Test func mesmoPayloadComOutraAssinaturaEAMesmaTransacao() async throws {
+        let node = node()
+        let first = try await transfer(30, nonce: 0)
+        let second = TransactionEnvelope(
+            payload: first.payload,
+            signature: try await Self.aliceSigner.sign(first.payload),
+            publicKey: first.publicKey)
+        #expect(first.signature != second.signature)
+
+        #expect(try await node.submit(first).hash == first.hash)
+        #expect(try await node.submit(second).hash == first.hash)
+        await node.mineBlock()
+
+        #expect(try await node.account(Self.alice).balance == Amount(70))
+    }
+    
+    @Test func paginaNuncaCortaUmBlocoAoMeio() async throws {
+            let node = node(aliceBalance: 100)
+            for nonce in 0..<3 {
+                _ = try await node.submit(transfer(1, nonce: UInt64(nonce)))
+            }
+            await node.mineBlock()  // três transações no mesmo bloco
+
+            var seen: [UInt64] = []
+            var cursor: UInt64? = nil
+            repeat {
+                let page = try await node.transactions(of: Self.alice, before: cursor, limit: 2)
+                seen += page.items.map(\.nonce)
+                cursor = page.nextBefore
+            } while cursor != nil
+
+            #expect(seen.sorted() == [0, 1, 2])
+        }
 }
