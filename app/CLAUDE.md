@@ -25,13 +25,14 @@ privada, assina transações localmente e consulta os nós pela API HTTP.
 - **Camadas**: Apresentação → View models → Serviços → Infraestrutura. Cada camada conhece a
   de baixo só por protocolos.
 - **Injeção de dependência**: só a composição em `App/` decide implementações (mock ou HTTP,
-  Keychain ou Secure Enclave).
+  memória ou Secure Enclave).
 - **Concorrência**: estado compartilhado em `actor` (ex.: `TransactionTracker`); UI só na main thread.
 
 ## Componentes previstos
 - `NodeClient` (protocolo) com `MockNodeClient` (latência e falhas configuráveis) e `HTTPNodeClient`.
-- `TransactionSigner` com `KeychainSigner` (funciona no simulador) e `SecureEnclaveSigner`
-  (só no aparelho físico).
+- `TransactionSigner` com `InMemorySigner` (simulador e testes) e `SecureEnclaveSigner`
+  (aparelho físico; ADRs 0006 e 0007: `.userPresence`, `WhenUnlockedThisDeviceOnly`,
+  uma carteira por aparelho, sem backup).
 - `NodePool` (health check, escolha do melhor nó, failover).
 - `TransactionTracker` (máquina de estados da transação, persistência em disco, write-ahead).
 - Saldo disponível = saldo confirmado − saídas pendentes. Depósitos pendentes não contam.
