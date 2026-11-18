@@ -133,6 +133,20 @@ conhecida pode estar `confirmed` ou `failed`, não só `pending`.
 
 Clientes devem tolerar códigos novos (tratar como erro genérico), não falhar ao decodificá-los.
 
+## Pedido de pagamento (QR code)
+Formato que uma carteira mostra para receber e outra lê para enviar. Não passa pelo nó.
+```
+coincoin:<endereço>
+coincoin:<endereço>?amount=<uint64>
+```
+- Quem gera usa minúsculas. Quem lê aceita esquema e endereço em maiúsculas.
+- `amount`: inteiro decimal maior que zero, só dígitos. Se for inválido ou repetido, o
+  pedido inteiro é recusado (nunca é ignorado em silêncio).
+- Parâmetros desconhecidos são ignorados. Parâmetros que começam com `req-` são
+  obrigatórios: se o leitor não os conhece, recusa o pedido.
+- Leitores também aceitam o endereço puro (40 hex), sem esquema.
+- No QR code, a URI vai em UTF-8 com correção de erros nível M (ADR 0009).
+
 ## Riscos conhecidos
 - Sem `chainId`: uma transação assinada vale em qualquer rede Coincoin com o mesmo estado.
   Aceitável numa rede única de laboratório.

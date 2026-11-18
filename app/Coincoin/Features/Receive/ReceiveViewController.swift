@@ -15,7 +15,7 @@ final class ReceiveViewController: UIViewController {
     static func sheet(for wallet: Address) -> UIViewController {
         let navigation = UINavigationController(rootViewController: ReceiveViewController(wallet: wallet))
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
+            sheet.detents = [.large()]
             sheet.prefersGrabberVisible = true
         }
         return navigation
@@ -44,6 +44,31 @@ final class ReceiveViewController: UIViewController {
     // MARK: - Layout
 
     private func buildLayout() {
+        let qrSide: CGFloat = 220
+        let qrView = UIImageView(image: QRCode.image(
+            for: PaymentRequest(address: wallet).uri, side: qrSide, scale: traitCollection.displayScale))
+        qrView.layer.magnificationFilter = .nearest
+        qrView.isAccessibilityElement = true
+        qrView.accessibilityLabel = String(localized: "QR code do seu endereço")
+        qrView.translatesAutoresizingMaskIntoConstraints = false
+
+        let qrCard = UIView()
+        qrCard.backgroundColor = .white
+        qrCard.layer.cornerRadius = 20
+        qrCard.layer.cornerCurve = .continuous
+        qrCard.addSubview(qrView)
+        NSLayoutConstraint.activate([
+            qrView.widthAnchor.constraint(equalToConstant: qrSide),
+            qrView.heightAnchor.constraint(equalToConstant: qrSide),
+            qrView.topAnchor.constraint(equalTo: qrCard.topAnchor, constant: 16),
+            qrView.bottomAnchor.constraint(equalTo: qrCard.bottomAnchor, constant: -16),
+            qrView.leadingAnchor.constraint(equalTo: qrCard.leadingAnchor, constant: 16),
+            qrView.trailingAnchor.constraint(equalTo: qrCard.trailingAnchor, constant: -16),
+        ])
+        let qrRow = UIStackView(arrangedSubviews: [qrCard])
+        qrRow.axis = .vertical
+        qrRow.alignment = .center
+
         let caption = UILabel()
         caption.text = String(localized: "Seu endereço Coincoin")
         caption.font = .preferredFont(forTextStyle: .subheadline)
@@ -99,9 +124,10 @@ final class ReceiveViewController: UIViewController {
         buttons.spacing = 12
         buttons.distribution = .fillEqually
 
-        let content = UIStackView(arrangedSubviews: [caption, addressCard, note, buttons])
+        let content = UIStackView(arrangedSubviews: [qrRow, caption, addressCard, note, buttons])
         content.axis = .vertical
         content.spacing = 16
+        content.setCustomSpacing(24, after: qrRow)
         content.setCustomSpacing(8, after: caption)
         content.setCustomSpacing(28, after: note)
         content.translatesAutoresizingMaskIntoConstraints = false
