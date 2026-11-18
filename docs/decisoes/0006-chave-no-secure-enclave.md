@@ -25,12 +25,26 @@ para essa chave, nunca `SecKey`. A composição decide por `SecureEnclave.isAvai
 quando é falso, injeta o `InMemorySigner`.
 
 > Correção (2026-11-18): este registro dizia que o simulador não tem Secure Enclave. Nos
-> simuladores iOS 26 e 27 usados no projeto, `isAvailable` é verdadeiro e os testes do
-> `SecureEnclaveSigner` rodam. A decisão não muda.
+> simuladores iOS 26 e 27 usados no projeto, `isAvailable` é verdadeiro e chaves sem
+> `.userPresence` funcionam (os testes do `SecureEnclaveSigner` usam essas). Já a chave da
+> carteira, com `.userPresence`, não pode ser criada no simulador (LocalAuthentication
+> -1020, "not supported on iOS Simulator"): lá a composição cai no `InMemorySigner` e cada
+> abertura gera uma carteira nova. A decisão não muda.
+
+### Verificação no aparelho (2026-11-18)
+Roteiro manual num iPhone com código e Face ID:
+- O pedido de Face ID aparece ao assinar, com a chave reaberta a partir da
+  `dataRepresentation` e um `LAContext` novo (o problema relatado no fórum não ocorreu).
+- Cancelar o Face ID volta à edição sem erro (`SignerError.cancelled`).
+- Com o rosto recusado, o código do aparelho é aceito (`.userPresence`).
+- Depois de fechar e reabrir o app, o endereço é o mesmo: a chave persiste.
+
+Não verificado: a chave sobreviver a recadastrar o Face ID (vem da documentação e do fórum).
 
 ### Consequências
 - Positivas: a chave privada não sai do chip; toda assinatura exige Face ID ou código.
-- Negativas: o pedido de Face ID (`.userPresence`) só é testável à mão, no aparelho.
+- Negativas: a chave da carteira e o pedido de Face ID só existem no aparelho; no simulador
+  a carteira é refeita a cada abertura.
 - Negativas: exige `NSFaceIDUsageDescription` e tratar o erro "bloco existe mas não abre".
 
 ## Prós e contras das opções
