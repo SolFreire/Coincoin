@@ -65,7 +65,7 @@ final class WalletViewController: UIViewController {
                 self?.presentSend()
             },
             CircleActionButton(title: String(localized: "Receber"), symbol: "arrow.down") { [weak self] in
-                self?.showComingSoon(String(localized: "Receber"))
+                self?.presentReceive()
             },
         ])
         actions.distribution = .fillEqually
@@ -111,15 +111,10 @@ final class WalletViewController: UIViewController {
         present(sheet, animated: true)
     }
 
-    // TODO(passo 8): abrir a sheet Receber.
-    private func showComingSoon(_ feature: String) {
-        let alert = UIAlertController(
-            title: feature,
-            message: String(localized: "Disponível em breve."),
-            preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: String(localized: "OK"), style: .default))
-        present(alert, animated: true)
+    private func presentReceive() {
+        present(ReceiveViewController.sheet(for: viewModel.wallet), animated: true)
     }
+
 
     // MARK: - Estado
 
