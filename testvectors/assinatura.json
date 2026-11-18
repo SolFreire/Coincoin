@@ -1,0 +1,76 @@
+{
+  "cases" : [
+    {
+      "description" : "Payload assinado pela própria chave.",
+      "expected" : "accepted",
+      "hash" : "9109a72a2970874d366116e117674d6b5644f1b8e9a126558a7ec86a71e2bed9",
+      "name" : "transferencia-valida",
+      "payload" : "eyJhbW91bnQiOjEwLCJub25jZSI6MCwidG8iOiJiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwIiwidHlwZSI6InRyYW5zZmVyIn0=",
+      "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA==",
+      "signature" : "MEUCICE4cT0DUtKFVr+INQXyRp26l7qY46NH91i5TyM0X5AgAiEAik7XFMvPMXkpbe4+o5kru+SXE17F0TNNwDuCy/YYrdA="
+    },
+    {
+      "description" : "Mesmo payload com (r, n−s): também válida, mesmo hash.",
+      "expected" : "accepted",
+      "hash" : "9109a72a2970874d366116e117674d6b5644f1b8e9a126558a7ec86a71e2bed9",
+      "name" : "assinatura-maleavel",
+      "payload" : "eyJhbW91bnQiOjEwLCJub25jZSI6MCwidG8iOiJiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwIiwidHlwZSI6InRyYW5zZmVyIn0=",
+      "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA==",
+      "signature" : "MEQCICE4cT0DUtKFVr+INQXyRp26l7qY46NH91i5TyM0X5AgAiB1sSjqNDDOh9aSEcFcZtRD2E/nTuFGazczfkf3Bkp3gQ=="
+    },
+    {
+      "description" : "Valor trocado de 10 para 90 depois de assinado.",
+      "expected" : "INVALID_SIGNATURE",
+      "name" : "payload-alterado",
+      "payload" : "eyJhbW91bnQiOjkwLCJub25jZSI6MCwidG8iOiJiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwIiwidHlwZSI6InRyYW5zZmVyIn0=",
+      "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA==",
+      "signature" : "MEUCICE4cT0DUtKFVr+INQXyRp26l7qY46NH91i5TyM0X5AgAiEAik7XFMvPMXkpbe4+o5kru+SXE17F0TNNwDuCy/YYrdA="
+    },
+    {
+      "description" : "Mallory assina o payload e põe a chave de Alice.",
+      "expected" : "INVALID_SIGNATURE",
+      "name" : "assinatura-de-outra-chave",
+      "payload" : "eyJhbW91bnQiOjEwLCJub25jZSI6MCwidG8iOiJiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwIiwidHlwZSI6InRyYW5zZmVyIn0=",
+      "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA==",
+      "signature" : "MEQCIG7oQrqrqu6FEnGyFLkBA0j3948AwS3pYm/RYxTNWFa0AiBMT1wWjJdcRGEzpDI+pHnF58+/DYsb4soxMy/6R+ULaQ=="
+    },
+    {
+      "description" : "Mesma chave de Alice em SPKI com ponto comprimido.",
+      "expected" : "MALFORMED",
+      "name" : "chave-ponto-comprimido",
+      "payload" : "eyJhbW91bnQiOjEwLCJub25jZSI6MCwidG8iOiJiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwIiwidHlwZSI6InRyYW5zZmVyIn0=",
+      "publicKey" : "MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgACG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6c=",
+      "signature" : "MEUCICE4cT0DUtKFVr+INQXyRp26l7qY46NH91i5TyM0X5AgAiEAik7XFMvPMXkpbe4+o5kru+SXE17F0TNNwDuCy/YYrdA="
+    },
+    {
+      "description" : "Assinatura válida sobre bytes que não são um payload.",
+      "expected" : "MALFORMED",
+      "name" : "bytes-assinados-nao-sao-json",
+      "payload" : "aXN0byBuw6NvIMOpIHVtIHBheWxvYWQ=",
+      "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA==",
+      "signature" : "MEYCIQCIludqi3aow9sqgJfI/4ksC9xkBDGBdTiYVeuOrJa8QQIhAL0TPN3cmJurKa5lSW/yFBsj4X4GywG5Hq/s5+c8kjuE"
+    },
+    {
+      "description" : "Dois defeitos: vale o primeiro na ordem de validação.",
+      "expected" : "INVALID_SIGNATURE",
+      "name" : "assinatura-invalida-e-nonce-errado",
+      "payload" : "eyJhbW91bnQiOjEwLCJub25jZSI6OSwidG8iOiJiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwYjBiMGIwIiwidHlwZSI6InRyYW5zZmVyIn0=",
+      "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA==",
+      "signature" : "MEUCICE4cT0DUtKFVr+INQXyRp26l7qY46NH91i5TyM0X5AgAiEAik7XFMvPMXkpbe4+o5kru+SXE17F0TNNwDuCy/YYrdA="
+    }
+  ],
+  "description" : "Vetores de assinatura do Coincoin (api/contrato.md, seções Assinatura, Chave pública e Ordem de validação). Chaves de TESTE, públicas de propósito: privada = SHA-256 da semente.",
+  "keys" : {
+    "alicePrivateKeyRaw" : "dc8548a8d37fcc7261629ec19bdfccc15cb87dd7e89dec997e8a5277ac405541",
+    "aliceSeed" : "coincoin/testvectors/alice",
+    "mallorySeed" : "coincoin/testvectors/mallory"
+  },
+  "sender" : {
+    "address" : "fbd7ab70c4e2483c252a47fbbf03599e9cac0477",
+    "publicKey" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG5KuVtBEAWwnHR22RDma4NXDPIjEj8V81DTOKNEWV6epfgUPQrdStsDA8jUxOb+qnTLN9wSxWsXP8zBNHvtcQA=="
+  },
+  "state" : {
+    "senderBalance" : 1000,
+    "senderNextNonce" : 0
+  }
+}
