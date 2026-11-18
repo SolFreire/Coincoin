@@ -176,6 +176,18 @@ struct WalletViewModelTests {
         #expect(viewModel.snapshot?.recent.first?.state == .confirmed(height: 1))
         #expect(viewModel.snapshot?.availableBalance == Amount(70))
     }
+    
+    @Test func sheetEnviarRecebeOSaldoDisponivel() async throws {
+        let node = MockNodeClient(balances: [Self.alice: Amount(100)])
+        let tracker = TransactionTracker(node: node, signer: Self.aliceSigner)
+        _ = try await tracker.send(Amount(30), to: Self.bob)
+        let viewModel = viewModel(node, tracker: tracker)
+
+        #expect(viewModel.makeSendViewModel().available == Amount(0))
+        await viewModel.load()
+        #expect(viewModel.makeSendViewModel().available == Amount(70))
+    }
+
 
     @Test func saldoDisponivelNuncaFicaNegativo() async throws {
         let node = MockNodeClient(balances: [Self.alice: Amount(100)])

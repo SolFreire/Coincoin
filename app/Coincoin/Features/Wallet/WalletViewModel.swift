@@ -36,6 +36,10 @@ final class WalletViewModel: ObservableObject {
         self.recentLimit = recentLimit
         self.now = now
     }
+    
+    func makeSendViewModel() -> SendViewModel {
+        SendViewModel(tracker: tracker, wallet: wallet, available: snapshot?.availableBalance ?? Amount(0))
+    }
 
     func load() async {
         guard !isLoading else { return }
@@ -70,4 +74,5 @@ final class WalletViewModel: ObservableObject {
             }
         }
     }
+    
 }

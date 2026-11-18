@@ -62,7 +62,7 @@ final class WalletViewController: UIViewController {
 
         let actions = UIStackView(arrangedSubviews: [
             CircleActionButton(title: String(localized: "Enviar"), symbol: "arrow.up") { [weak self] in
-                self?.showComingSoon(String(localized: "Enviar"))
+                self?.presentSend()
             },
             CircleActionButton(title: String(localized: "Receber"), symbol: "arrow.down") { [weak self] in
                 self?.showComingSoon(String(localized: "Receber"))
@@ -103,7 +103,15 @@ final class WalletViewController: UIViewController {
         ])
     }
 
-    // TODO(passos 7 e 8): abrir as sheets Enviar (com leitor de QR no campo de endereço) e Receber.
+    private func presentSend() {
+        let sheet = SendViewController.sheet(viewModel: viewModel.makeSendViewModel()) { [weak self] _ in
+            guard let self else { return }
+            Task { await self.viewModel.load() }
+        }
+        present(sheet, animated: true)
+    }
+
+    // TODO(passo 8): abrir a sheet Receber.
     private func showComingSoon(_ feature: String) {
         let alert = UIAlertController(
             title: feature,
