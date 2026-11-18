@@ -21,12 +21,16 @@ posse da conta: quem a tiver gasta o saldo. Onde guardá-la e o que exigir para 
 Opção escolhida: **Secure Enclave com `.userPresence`**, acessibilidade
 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`. A `dataRepresentation` da chave (bloco
 que só aquele chip abre) é guardada como item do Keychain. Só a API do CryptoKit é usada
-para essa chave, nunca `SecKey`. No simulador (`SecureEnclave.isAvailable == false`),
-a composição injeta o `InMemorySigner`.
+para essa chave, nunca `SecKey`. A composição decide por `SecureEnclave.isAvailable`:
+quando é falso, injeta o `InMemorySigner`.
+
+> Correção (2026-11-18): este registro dizia que o simulador não tem Secure Enclave. Nos
+> simuladores iOS 26 e 27 usados no projeto, `isAvailable` é verdadeiro e os testes do
+> `SecureEnclaveSigner` rodam. A decisão não muda.
 
 ### Consequências
 - Positivas: a chave privada não sai do chip; toda assinatura exige Face ID ou código.
-- Negativas: o `SecureEnclaveSigner` só é testável à mão, no aparelho.
+- Negativas: o pedido de Face ID (`.userPresence`) só é testável à mão, no aparelho.
 - Negativas: exige `NSFaceIDUsageDescription` e tratar o erro "bloco existe mas não abre".
 
 ## Prós e contras das opções

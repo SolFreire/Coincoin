@@ -30,9 +30,9 @@ privada, assina transações localmente e consulta os nós pela API HTTP.
 
 ## Componentes previstos
 - `NodeClient` (protocolo) com `MockNodeClient` (latência e falhas configuráveis) e `HTTPNodeClient`.
-- `TransactionSigner` com `InMemorySigner` (simulador e testes) e `SecureEnclaveSigner`
-  (aparelho físico; ADRs 0006 e 0007: `.userPresence`, `WhenUnlockedThisDeviceOnly`,
-  uma carteira por aparelho, sem backup).
+- `TransactionSigner` com `InMemorySigner` (testes e quando não há Secure Enclave) e
+  `SecureEnclaveSigner` (quando `SecureEnclave.isAvailable`; ADRs 0006 e 0007:
+  `.userPresence`, `WhenUnlockedThisDeviceOnly`, uma carteira por aparelho, sem backup).
 - `NodePool` (health check, escolha do melhor nó, failover).
 - `TransactionTracker` (máquina de estados da transação, persistência em disco, write-ahead).
 - Saldo disponível = saldo confirmado − saídas pendentes. Depósitos pendentes não contam.
