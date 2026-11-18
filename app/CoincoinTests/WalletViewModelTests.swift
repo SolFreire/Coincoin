@@ -18,8 +18,18 @@ struct WalletViewModelTests {
         return node
     }
 
-    func viewModel(_ node: MockNodeClient, wallet: Address? = nil, recentLimit: Int = 5) -> WalletViewModel {
-        WalletViewModel(node: node, wallet: wallet ?? Self.alice, recentLimit: recentLimit, now: { Self.fixedNow })
+    func viewModel(
+        _ node: MockNodeClient,
+        wallet: Address? = nil,
+        recentLimit: Int = 5,
+        tracker: TransactionTracker? = nil
+    ) -> WalletViewModel {
+        WalletViewModel(
+            node: node,
+            tracker: tracker ?? TransactionTracker(node: node, signer: Self.aliceSigner),
+            wallet: wallet ?? Self.alice,
+            recentLimit: recentLimit,
+            now: { Self.fixedNow })
     }
 
     // MARK: - Carregamento
@@ -121,4 +131,62 @@ struct WalletViewModelTests {
         #expect(Amount(1_250).accessibilityText(locale: brazil) == "1250 Coincoins")
         #expect(Address(hex: "a3f9" + String(repeating: "0", count: 32) + "7c21")!.short == "a3f9…7c21")
     }
+    
+    // MARK: - Envios do próprio app
+
+    @Test func saldoDisponivelDescontaOsEnviosAbertos() async throws {
+        let node = MockNodeClient(balances: [Self.alice: Amount(100)])
+        let tracker = TransactionTracker(node: node, signer: Self.aliceSigner)
+        _ = try await tracker.send(Amount(30), to: Self.bob)
+        let viewModel = viewModel(node, tracker: tracker)
+
+        await viewModel.load()
+
+        #expect(viewModel.snapshot?.availableBalance == Amount(70))
+        #expect(viewModel.snapshot?.recent.first?.state == .pending)
+        #expect(viewModel.snapshot?.recent.first?.isUncertain == false)
+    }
+
+    @Test func envioDesconhecidoApareceComoConferindo() async throws {
+        let node = MockNodeClient(balances: [Self.alice: Amount(100)])
+        let tracker = TransactionTracker(node: node, signer: Self.aliceSigner)
+        await node.failNextSubmits(.dropResponse)
+        _ = try await tracker.send(Amount(30), to: Self.bob)
+        await node.failNextCalls(.unreachable)
+        let viewModel = viewModel(node, tracker: tracker)
+
+        await viewModel.load()
+
+        let first = try #require(viewModel.snapshot?.recent.first)
+        #expect(first.isUncertain)
+        #expect(first.statusText == "Conferindo com o nó…")
+        #expect(viewModel.snapshot?.availableBalance == Amount(70))
+    }
+
+    @Test func confirmadaNaoApareceDuasVezes() async throws {
+        let node = MockNodeClient(balances: [Self.alice: Amount(100)])
+        let tracker = TransactionTracker(node: node, signer: Self.aliceSigner)
+        _ = try await tracker.send(Amount(30), to: Self.bob)
+        await node.mineBlock(at: Self.fixedNow)
+        let viewModel = viewModel(node, tracker: tracker)
+
+        await viewModel.load()
+
+        #expect(viewModel.snapshot?.recent.count == 1)
+        #expect(viewModel.snapshot?.recent.first?.state == .confirmed(height: 1))
+        #expect(viewModel.snapshot?.availableBalance == Amount(70))
+    }
+
+    @Test func saldoDisponivelNuncaFicaNegativo() async throws {
+        let node = MockNodeClient(balances: [Self.alice: Amount(100)])
+        let tracker = TransactionTracker(node: node, signer: Self.aliceSigner)
+        _ = try await tracker.send(Amount(80), to: Self.bob)
+        _ = try await tracker.send(Amount(80), to: Self.bob)
+        let viewModel = viewModel(node, tracker: tracker)
+
+        await viewModel.load()
+
+        #expect(viewModel.snapshot?.availableBalance == Amount(0))
+    }
+
 }

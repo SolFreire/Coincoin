@@ -6,7 +6,7 @@ import UIKit
 struct AppComposerTests {
 
     @Test func tabBarTemExatamenteCarteiraEHistorico() {
-        let root = AppComposer().makeRootViewController()
+        let root = AppComposer(signer: InMemorySigner()).makeRootViewController()
 
         #expect(root.tabs.map(\.identifier) == [AppComposer.TabID.wallet, AppComposer.TabID.activity])
         #expect(root.tabs.map(\.title) == ["Carteira", "Histórico"])

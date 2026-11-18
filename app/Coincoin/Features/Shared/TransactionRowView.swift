@@ -108,6 +108,8 @@ extension TransactionSummary {
 
     var appearance: Appearance {
         switch (state, direction) {
+        case (.pending, _) where isUncertain:
+            Appearance(symbol: "clock.badge.questionmark", tint: .systemOrange, background: .systemOrange.withAlphaComponent(0.15))
         case (.pending, _):
             Appearance(symbol: "clock", tint: .systemOrange, background: .systemOrange.withAlphaComponent(0.15))
         case (.failed, _):
@@ -130,13 +132,15 @@ extension TransactionSummary {
     }
 
     var relativeDateText: String {
+        guard case .confirmed = state else { return statusText }
         let text = date.formatted(.relative(presentation: .named))
         return text.prefix(1).uppercased() + text.dropFirst()
     }
 
     var statusText: String {
         switch state {
-        case .pending: String(localized: "Pendente")
+        case .pending where isUncertain: String(localized: "Conferindo com o nó…")
+        case .pending: String(localized: "Aguardando bloco")
         case .confirmed: String(localized: "Confirmada")
         case .failed: String(localized: "Falhou")
         }

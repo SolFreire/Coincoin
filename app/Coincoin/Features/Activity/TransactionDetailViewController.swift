@@ -116,7 +116,7 @@ final class TransactionDetailViewController: UIViewController {
         }
         let steps: [(StepState, String)] = [
             (.done, String(localized: "Assinada")),
-            (.done, String(localized: "Aceita pelo nó")),
+            (transaction.isUncertain ? .waiting : .done, String(localized: "Aceita pelo nó")),
             last,
         ]
 

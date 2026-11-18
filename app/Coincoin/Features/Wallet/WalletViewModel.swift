@@ -18,12 +18,20 @@ final class WalletViewModel: ObservableObject {
     @Published private(set) var isLoading = false
 
     let wallet: Address
+    let tracker: TransactionTracker
     private let node: any NodeClient
     private let recentLimit: Int
     private let now: () -> Date
 
-    init(node: any NodeClient, wallet: Address, recentLimit: Int = 5, now: @escaping () -> Date = Date.init) {
+    init(
+        node: any NodeClient,
+        tracker: TransactionTracker,
+        wallet: Address,
+        recentLimit: Int = 5,
+        now: @escaping () -> Date = Date.init
+    ) {
         self.node = node
+        self.tracker = tracker
         self.wallet = wallet
         self.recentLimit = recentLimit
         self.now = now
@@ -33,6 +41,9 @@ final class WalletViewModel: ObservableObject {
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
+        await tracker.refresh()
+        let outgoing = await tracker.outgoingPending
+        let local = await tracker.transactions.compactMap { TransactionSummary(tracked: $0, date: now()) }
 
         do {
             async let health = node.health()
@@ -40,12 +51,17 @@ final class WalletViewModel: ObservableObject {
             async let history = node.transactions(of: wallet, before: nil, limit: recentLimit)
             let (healthResponse, accountResponse, historyResponse) = try await (health, account, history)
 
+            let localIDs = Set(local.map(\.id))
+            let confirmed = historyResponse.items
+                .map { TransactionSummary(record: $0, viewer: wallet) }
+                .filter { !localIDs.contains($0.id) }
+            let balance = accountResponse.balance.units
+
             snapshot = Snapshot(
-                // TODO(passo 7): descontar as saídas pendentes do TransactionTracker.
-                availableBalance: accountResponse.balance,
+                availableBalance: Amount(balance > outgoing.units ? balance - outgoing.units : 0),
                 nodeId: healthResponse.nodeId,
                 height: healthResponse.height,
-                recent: historyResponse.items.map { TransactionSummary(record: $0, viewer: wallet) },
+                recent: Array((local + confirmed).prefix(recentLimit)),
                 fetchedAt: now())
             problem = nil
         } catch {

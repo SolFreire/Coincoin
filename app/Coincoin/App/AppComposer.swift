@@ -10,25 +10,29 @@ struct AppComposer {
 
     let node: any NodeClient
     let wallet: Address
+    let tracker: TransactionTracker
 
-    init(node: any NodeClient, wallet: Address) {
-        self.node = node
-        self.wallet = wallet
+    init(signer: any TransactionSigner) {
+        let demo = DemoEnvironment.make(wallet: signer.address)
+        node = demo.node
+        wallet = signer.address
+        tracker = TransactionTracker(node: demo.node, signer: signer)
     }
 
     init() {
-        let demo = DemoEnvironment.make()
-        self.init(node: demo.node, wallet: demo.wallet)
+        self.init(signer: DemoEnvironment.makeWalletSigner())
     }
 
     func makeRootViewController() -> UITabBarController {
         let node = node
         let wallet = wallet
+        let tracker = tracker
         let tabBarController = UITabBarController()
         tabBarController.tabs = [
             makeTab(id: TabID.wallet, title: String(localized: "Carteira"), symbol: "wallet.bifold") {
-                WalletViewController(viewModel: WalletViewModel(node: node, wallet: wallet))
+                WalletViewController(viewModel: WalletViewModel(node: node, tracker: tracker, wallet: wallet))
             },
+            
             makeTab(id: TabID.activity, title: String(localized: "Histórico"), symbol: "clock.arrow.circlepath") {
                 ActivityViewController(viewModel: ActivityViewModel(node: node, wallet: wallet))
             },

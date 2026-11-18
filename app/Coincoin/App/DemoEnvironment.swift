@@ -1,15 +1,26 @@
 import Foundation
+import CryptoKit
 
 nonisolated struct DemoEnvironment: Sendable {
     let node: DemoNodeClient
     let wallet: Address
 
-    static let walletSigner = InMemorySigner()
     static let faucetSigner = InMemorySigner()
     static let friendSigner = InMemorySigner()
 
-    static func make(now: Date = .now) -> DemoEnvironment {
-        let wallet = walletSigner.address
+    static func makeWalletSigner() -> any TransactionSigner {
+        guard SecureEnclave.isAvailable else { return InMemorySigner() }
+        do {
+            if let existing = try SecureEnclaveSigner.load() {
+                return existing
+            }
+            return try SecureEnclaveSigner.create()
+        } catch {
+            return InMemorySigner()
+        }
+    }
+
+    static func make(wallet: Address, now: Date = .now) -> DemoEnvironment {
         let mock = MockNodeClient(
             nodeId: "demo",
             balances: [faucetSigner.address: Amount(1_000_000)])
@@ -25,9 +36,8 @@ nonisolated struct DemoEnvironment: Sendable {
         let friend = friendSigner.address
         let history: [(signer: InMemorySigner, to: Address, amount: UInt64, nonce: UInt64, daysAgo: Double)] = [
             (faucetSigner, wallet, 1_120, 0, 5),
-            (walletSigner, friend, 120, 0, 3),
-            (faucetSigner, wallet, 300, 1, 1),
-            (walletSigner, friend, 50, 1, 0.1),
+            (faucetSigner, friend, 500, 1, 4),
+            (friendSigner, wallet, 130, 0, 1),
         ]
         for entry in history {
             let payload = TransferPayload(to: entry.to, amount: Amount(entry.amount), nonce: entry.nonce)

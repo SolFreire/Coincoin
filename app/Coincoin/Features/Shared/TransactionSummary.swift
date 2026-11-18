@@ -13,6 +13,7 @@ nonisolated struct TransactionSummary: Hashable, Identifiable, Sendable {
     let nonce: UInt64
     let state: TxState
     let date: Date
+    var isUncertain = false
 
     var height: UInt64? {
         if case .confirmed(let height) = state { return height }
@@ -31,5 +32,22 @@ extension TransactionSummary {
             nonce: record.nonce,
             state: record.state,
             date: record.timestamp)
+    }
+    init?(tracked: TrackedTransaction, date: Date) {
+        let state: TxState
+        switch tracked.phase {
+        case .sending, .unknown, .pending: state = .pending
+        case .failed(let code): state = .failed(code)
+        case .confirmed: return nil
+        }
+        self.init(
+            id: tracked.id,
+            direction: .sent,
+            counterparty: tracked.transfer.to,
+            amount: tracked.transfer.amount,
+            nonce: tracked.transfer.nonce,
+            state: state,
+            date: date,
+            isUncertain: tracked.phase == .sending || tracked.phase == .unknown)
     }
 }
