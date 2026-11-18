@@ -17,6 +17,6 @@ nonisolated enum NodeClientError: Error, Hashable, Sendable {
     case invalidResponse
     case cancelled
     var outcomeIsUnknown: Bool {
-        self == .timedOut || self == .cancelled
+        self == .timedOut || self == .cancelled || self == .invalidResponse
     }
 }

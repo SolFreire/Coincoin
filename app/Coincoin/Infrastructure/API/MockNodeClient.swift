@@ -21,6 +21,7 @@ actor MockNodeClient: NodeClient {
     let nodeId: String
     private(set) var behavior: Behavior
     private var scheduledFailures: [Failure] = []
+    private var scheduledSubmitFailures: [Failure] = []
 
 
 
@@ -52,6 +53,10 @@ actor MockNodeClient: NodeClient {
 
     func failNextCalls(_ failures: Failure...) {
         scheduledFailures.append(contentsOf: failures)
+    }
+
+    func failNextSubmits(_ failures: Failure...) {
+        scheduledSubmitFailures.append(contentsOf: failures)
     }
 
     // MARK: - NodeClient
@@ -109,7 +114,8 @@ actor MockNodeClient: NodeClient {
     }
 
     func submit(_ envelope: TransactionEnvelope) async throws(NodeClientError) -> TxStatusResponse {
-        let dropsResponse = try await travel()
+        let forced = scheduledSubmitFailures.isEmpty ? nil : scheduledSubmitFailures.removeFirst()
+        let dropsResponse = try await travel(forcing: forced)
         try verifySignature(of: envelope)
         
         let hash = envelope.hash
@@ -174,8 +180,8 @@ actor MockNodeClient: NodeClient {
         }
     }
 
-    private func travel() async throws(NodeClientError) -> Bool {
-        let failure = scheduledFailures.isEmpty ? nil : scheduledFailures.removeFirst()
+    private func travel(forcing forced: Failure? = nil) async throws(NodeClientError) -> Bool {
+        let failure = forced ?? (scheduledFailures.isEmpty ? nil : scheduledFailures.removeFirst())
 
         let wait = min(behavior.latency, behavior.timeout)
         if wait > .zero {
