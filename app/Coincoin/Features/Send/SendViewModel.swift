@@ -66,6 +66,16 @@ final class SendViewModel: ObservableObject {
             status = .failed(error)
         }
     }
+    
+    func applyScanned(_ text: String) -> Bool {
+        guard let request = PaymentRequest(scanned: text) else { return false }
+        addressText = request.address.hex
+        if let amount = request.amount {
+            amountText = String(amount.units)
+        }
+        return true
+    }
+
 
     private func validate() {
         if case .failed = status {

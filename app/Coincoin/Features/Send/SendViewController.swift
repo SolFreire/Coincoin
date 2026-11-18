@@ -106,8 +106,17 @@ final class SendViewController: UIViewController {
         })
         pasteButton.accessibilityLabel = String(localized: "Colar endereço")
         pasteButton.setContentHuggingPriority(.required, for: .horizontal)
+        var scanConfiguration = UIButton.Configuration.plain()
+        scanConfiguration.image = UIImage(systemName: "qrcode.viewfinder")
+        scanConfiguration.baseForegroundColor = .accent
+        let scanButton = UIButton(configuration: scanConfiguration, primaryAction: UIAction { [weak self] _ in
+            self?.presentScanner()
+        })
+        scanButton.accessibilityLabel = String(localized: "Escanear QR code")
+        scanButton.setContentHuggingPriority(.required, for: .horizontal)
+        scanButton.isHidden = !QRScannerViewController.isSupported
 
-        let addressRow = UIStackView(arrangedSubviews: [addressField, pasteButton])
+        let addressRow = UIStackView(arrangedSubviews: [addressField, pasteButton, scanButton])
         addressRow.spacing = 4
         addressRow.alignment = .center
         addressRow.isLayoutMarginsRelativeArrangement = true
@@ -169,6 +178,8 @@ final class SendViewController: UIViewController {
             addressRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 56),
             pasteButton.widthAnchor.constraint(equalToConstant: 44),
             pasteButton.heightAnchor.constraint(equalToConstant: 44),
+            scanButton.widthAnchor.constraint(equalToConstant: 44),
+            scanButton.heightAnchor.constraint(equalToConstant: 44),
 
             sendButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             sendButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
@@ -196,6 +207,17 @@ final class SendViewController: UIViewController {
         addressField.text = text
         viewModel.addressText = text
     }
+    
+    private func presentScanner() {
+        let scanner = QRScannerViewController.sheet { [weak self] text in
+            guard let self, viewModel.applyScanned(text) else { return false }
+            addressField.text = viewModel.addressText
+            amountField.text = viewModel.amountText
+            return true
+        }
+        present(scanner, animated: true)
+    }
+
 
     private func send() {
         view.endEditing(true)

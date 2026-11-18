@@ -57,6 +57,7 @@
         "DEVELOPMENT_TEAM": "NVHUZQ5SCG",
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_FILE": "Coincoin/Info.plist",
+        "INFOPLIST_KEY_NSCameraUsageDescription": "O Coincoin usa a câmera para ler o QR code de um endereço.",
         "INFOPLIST_KEY_NSFaceIDUsageDescription": "O Coincoin usa o Face ID para autorizar cada transferência.",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents": "YES",
         "INFOPLIST_KEY_UILaunchScreen_Generation": "YES",

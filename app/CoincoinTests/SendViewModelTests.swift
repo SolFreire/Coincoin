@@ -81,6 +81,46 @@ struct SendViewModelTests {
         #expect(viewModel.amountIssue == nil)
         #expect(viewModel.canSend)
     }
+    
+    // MARK: - QR code escaneado
+
+    @Test func qrCodePreencheOEndereco() {
+        let (_, viewModel) = make()
+
+        #expect(viewModel.applyScanned("coincoin:\(Self.bob.hex)"))
+
+        #expect(viewModel.addressText == Self.bob.hex)
+        #expect(viewModel.addressIssue == nil)
+        #expect(viewModel.amountText.isEmpty)
+    }
+
+    @Test func qrCodeComValorPreencheOsDoisCampos() {
+        let (_, viewModel) = make()
+        viewModel.amountText = "5"
+
+        #expect(viewModel.applyScanned("coincoin:\(Self.bob.hex)?amount=40"))
+
+        #expect(viewModel.amountText == "40")
+        #expect(viewModel.canSend)
+    }
+
+    @Test func qrCodeQueNaoECoincoinNaoMudaNada() {
+        let (_, viewModel) = make()
+        viewModel.addressText = Self.bob.hex
+
+        #expect(viewModel.applyScanned("https://exemplo.com") == false)
+
+        #expect(viewModel.addressText == Self.bob.hex)
+    }
+
+    @Test func qrCodeDaPropriaCarteiraMostraOAviso() {
+        let signer = InMemorySigner()
+        let (_, viewModel) = make(signer: signer)
+
+        #expect(viewModel.applyScanned(PaymentRequest(address: signer.address).uri))
+
+        #expect(viewModel.addressIssue == .ownAddress)
+    }
 
     // MARK: - Envio
 
