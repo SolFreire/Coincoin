@@ -8,7 +8,7 @@
 import Foundation
 
 nonisolated struct TrackedTransaction: Hashable, Identifiable, Sendable {
-    enum Phase: Hashable, Sendable {
+    enum Phase: Codable, Hashable, Sendable {
         case sending
         case unknown
         case pending
@@ -37,17 +37,35 @@ nonisolated enum SendError: Error, Hashable, Sendable {
     case signingFailed(SignerError)
     case rejected(APIError)
     case node(NodeClientError)
+    case storageFailed
 }
 
 actor TransactionTracker {
     private let node: any NodeClient
     private let signer: any TransactionSigner
-    private var tracked: [TxHash: TrackedTransaction] = [:]
+    private let journal: any TransactionJournal
+    private var tracked: [TxHash: TrackedTransaction]
+    private let journalIsUnreadable: Bool
     private var isSending = false
 
-    init(node: any NodeClient, signer: any TransactionSigner) {
+    init(node: any NodeClient, signer: any TransactionSigner, journal: any TransactionJournal = InMemoryJournal()) {
         self.node = node
         self.signer = signer
+        self.journal = journal
+
+        var restored: [TxHash: TrackedTransaction] = [:]
+        var unreadable = false
+        do {
+            for entry in try journal.load() where entry.publicKey == signer.publicKeyDER {
+                if let transaction = TrackedTransaction(restoring: entry) {
+                    restored[transaction.id] = transaction
+                }
+            }
+        } catch {
+            unreadable = true
+        }
+        self.tracked = restored
+        self.journalIsUnreadable = unreadable
     }
 
     var transactions: [TrackedTransaction] {
@@ -59,6 +77,7 @@ actor TransactionTracker {
     }
 
     func send(_ amount: Amount, to recipient: Address) async throws(SendError) -> TrackedTransaction {
+        guard !journalIsUnreadable else { throw .storageFailed }
         guard !isSending else { throw .busy }
         isSending = true
         defer { isSending = false }
@@ -87,6 +106,12 @@ actor TransactionTracker {
 
         let transaction = TrackedTransaction(envelope: envelope, transfer: transfer, phase: .sending)
         tracked[transaction.id] = transaction
+        do {
+            try persist()
+        } catch {
+            tracked[transaction.id] = nil
+            throw .storageFailed
+        }
         return try await deliver(transaction)
     }
 
@@ -107,11 +132,13 @@ actor TransactionTracker {
             return update(transaction, to: Self.phase(of: response.state))
         } catch .rejected(let apiError) {
             tracked[transaction.id] = nil
+            try? persist()
             throw .rejected(apiError)
         } catch let error where error.outcomeIsUnknown {
             return update(transaction, to: .unknown)
         } catch {
             tracked[transaction.id] = nil
+            try? persist()
             throw .node(error)
         }
     }
@@ -132,7 +159,17 @@ actor TransactionTracker {
         var updated = transaction
         updated.phase = phase
         tracked[updated.id] = updated
+        try? persist()
         return updated
+    }
+
+    private func persist() throws {
+        guard !journalIsUnreadable else { throw CocoaError(.fileReadCorruptFile) }
+        let entries = tracked.values
+            .filter { if case .confirmed = $0.phase { false } else { true } }
+            .sorted { $0.transfer.nonce < $1.transfer.nonce }
+            .map(JournalEntry.init)
+        try journal.save(entries)
     }
 
     private static func phase(of state: TxState) -> TrackedTransaction.Phase {
@@ -141,5 +178,27 @@ actor TransactionTracker {
         case .confirmed(let height): .confirmed(height: height)
         case .failed(let code): .failed(code)
         }
+    }
+}
+
+nonisolated extension TrackedTransaction {
+    fileprivate init?(restoring entry: JournalEntry) {
+        guard let transfer = try? APICoding.makeDecoder().decode(TransferPayload.self, from: entry.payload) else {
+            return nil
+        }
+        self.init(
+            envelope: TransactionEnvelope(payload: entry.payload, signature: entry.signature, publicKey: entry.publicKey),
+            transfer: transfer,
+            phase: entry.phase == .sending ? .unknown : entry.phase)
+    }
+}
+
+nonisolated extension JournalEntry {
+    fileprivate init(_ transaction: TrackedTransaction) {
+        self.init(
+            payload: transaction.envelope.payload,
+            signature: transaction.envelope.signature,
+            publicKey: transaction.envelope.publicKey,
+            phase: transaction.phase)
     }
 }
