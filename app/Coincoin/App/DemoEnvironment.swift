@@ -1,5 +1,4 @@
 import Foundation
-import CryptoKit
 
 nonisolated struct DemoEnvironment: Sendable {
     let node: DemoNodeClient
@@ -7,18 +6,6 @@ nonisolated struct DemoEnvironment: Sendable {
 
     static let faucetSigner = InMemorySigner()
     static let friendSigner = InMemorySigner()
-
-    static func makeWalletSigner() -> any TransactionSigner {
-        guard SecureEnclave.isAvailable else { return InMemorySigner() }
-        do {
-            if let existing = try SecureEnclaveSigner.load() {
-                return existing
-            }
-            return try SecureEnclaveSigner.create()
-        } catch {
-            return InMemorySigner()
-        }
-    }
 
     static func make(wallet: Address, now: Date = .now) -> DemoEnvironment {
         let mock = MockNodeClient(

@@ -18,13 +18,19 @@ nonisolated enum WalletState: Sendable {
 
 nonisolated struct WalletLoader: Sendable {
     let store: KeychainStore
+    let keyFlags: SecAccessControlCreateFlags
     let canHoldKey: @Sendable () -> Bool
 
-    init(store: KeychainStore = .wallet, canHoldKey: @escaping @Sendable () -> Bool = WalletLoader.deviceCanHoldKey) {
+    init(
+        store: KeychainStore = .wallet,
+        keyFlags: SecAccessControlCreateFlags = [.privateKeyUsage, .userPresence],
+        canHoldKey: @escaping @Sendable () -> Bool = WalletLoader.deviceCanHoldKey
+    ) {
         self.store = store
+        self.keyFlags = keyFlags
         self.canHoldKey = canHoldKey
     }
-
+    
     static func deviceCanHoldKey() -> Bool {
         #if targetEnvironment(simulator)
         false
@@ -46,6 +52,16 @@ nonisolated struct WalletLoader: Sendable {
 
     func create() throws(SignerError) -> any TransactionSigner {
         guard canHoldKey() else { throw .failed }
-        return try SecureEnclaveSigner.create(in: store)
+        return try SecureEnclaveSigner.create(in: store, flags: keyFlags)
+    }
+
+    func replace() throws(SignerError) -> any TransactionSigner {
+        guard canHoldKey() else { throw .failed }
+        do {
+            try store.delete()
+        } catch {
+            throw .failed
+        }
+        return try create()
     }
 }

@@ -8,31 +8,33 @@ struct AppComposer {
         static let activity = "activity"
     }
 
-    let node: any NodeClient
-    let wallet: Address
-    let tracker: TransactionTracker
+    let loader: WalletLoader
 
-    init(signer: any TransactionSigner) {
+    init(loader: WalletLoader = WalletLoader()) {
+        self.loader = loader
+    }
+
+    func makeRootViewController() -> UIViewController {
+        let state = loader.load()
+        if case .ready(let signer) = state {
+            return makeTabs(signer: signer)
+        }
+        guard let viewModel = OnboardingViewModel(state: state, loader: loader) else {
+            return UIViewController()
+        }
+        return OnboardingViewController(viewModel: viewModel, makeNext: makeTabs)
+    }
+
+    func makeTabs(signer: any TransactionSigner) -> UITabBarController {
         let demo = DemoEnvironment.make(wallet: signer.address)
-        node = demo.node
-        wallet = signer.address
-        tracker = TransactionTracker(node: demo.node, signer: signer)
-    }
-
-    init() {
-        self.init(signer: DemoEnvironment.makeWalletSigner())
-    }
-
-    func makeRootViewController() -> UITabBarController {
-        let node = node
-        let wallet = wallet
-        let tracker = tracker
+        let node: any NodeClient = demo.node
+        let wallet = signer.address
+        let tracker = TransactionTracker(node: demo.node, signer: signer)
         let tabBarController = UITabBarController()
         tabBarController.tabs = [
             makeTab(id: TabID.wallet, title: String(localized: "Carteira"), symbol: "wallet.bifold") {
                 WalletViewController(viewModel: WalletViewModel(node: node, tracker: tracker, wallet: wallet))
             },
-            
             makeTab(id: TabID.activity, title: String(localized: "Histórico"), symbol: "clock.arrow.circlepath") {
                 ActivityViewController(viewModel: ActivityViewModel(node: node, wallet: wallet))
             },
